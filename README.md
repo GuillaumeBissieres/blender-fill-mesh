@@ -1,4 +1,3 @@
-<img width="1545" height="969" alt="fill_mesh_tuto5" src="https://github.com/user-attachments/assets/8c20e057-b7e2-4883-aaef-2de0fd76d33d" /># blender-fill-mesh
 An add-on to fix and fill hole on your meshes
 
 
