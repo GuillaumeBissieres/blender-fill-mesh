@@ -490,22 +490,22 @@ class FILLMESH_OT_detect_hole(bpy.types.Operator):
         # Sort holes by size (largest first)
         boundary_loops.sort(key=lambda loop: len(loop), reverse=True)
 
-        # Slider modes
-        if self.radius > 0:
-            if self.single_hole_mode:
-                idx = min(max(self.radius - 1, 0), max(len(boundary_loops) - 1, 0))
-                if boundary_loops:
-                    boundary_loops = [boundary_loops[idx]]
-            else:
-                boundary_loops = boundary_loops[:min(self.radius, len(boundary_loops))]
-
-        # Clear previous selection (verts + edges)
-        for v in bm.verts:
-            v.select = False
-        for e in bm.edges:
-            e.select = False
-
         if chosen in (None, "", "ALL"):
+            # Slider modes only apply when selecting ALL holes
+            if self.radius > 0:
+                if self.single_hole_mode:
+                    idx = min(max(self.radius - 1, 0), max(len(boundary_loops) - 1, 0))
+                    if boundary_loops:
+                        boundary_loops = [boundary_loops[idx]]
+                else:
+                    boundary_loops = boundary_loops[:min(self.radius, len(boundary_loops))]
+
+            # Clear previous selection
+            for v in bm.verts:
+                v.select = False
+            for e in bm.edges:
+                e.select = False
+
             count = 0
             for loop in boundary_loops:
                 for edge in loop:
@@ -518,7 +518,7 @@ class FILLMESH_OT_detect_hole(bpy.types.Operator):
             self.report({'INFO'}, f"Detected and selected {count} hole(s)")
             return {'FINISHED'}
 
-        # Specific hole chosen
+        # Specific hole chosen — radius filter does NOT apply here
         try:
             idx = int(chosen)
         except ValueError:
@@ -528,6 +528,12 @@ class FILLMESH_OT_detect_hole(bpy.types.Operator):
         if idx < 0 or idx >= len(boundary_loops):
             self.report({'ERROR'}, "Selected hole index out of range")
             return {'CANCELLED'}
+
+        # Clear previous selection
+        for v in bm.verts:
+            v.select = False
+        for e in bm.edges:
+            e.select = False
 
         chosen_loop = boundary_loops[idx]
         for edge in chosen_loop:
@@ -742,33 +748,41 @@ def quad_already_exists(verts):
 
 
 def repair_all_notches(bm, tol_factor=0.5, max_passes=64):
-    """Fill missing quads around the selected hole boundary.
+    """Fill missing quads on all selected hole boundaries.
 
-    Feeds each boundary edge one at a time to propagate_quad_from_boundary
-    (exactly like the user clicking Simple Quad Fill on each edge manually).
-    Iterates until no more quads can be created."""
+    Respects the current selection:
+    - If edges from multiple holes are selected → repairs all of them.
+    - If edges from one hole are selected → repairs only that hole.
+    - If nothing is selected and there is only one hole → repairs it.
+    - If nothing is selected and there are multiple holes → repairs all."""
     all_created = []
 
-    # Find the target hole
     boundary_edges = find_boundary_edges(bm)
     if not boundary_edges:
         return []
 
     loops = loops_from_boundary_edges(boundary_edges)
-    target_loop = next((lp for lp in loops if any(e.select for e in lp)), None)
-    if target_loop is None:
-        if len(loops) == 1:
-            target_loop = loops[0]
-        else:
-            return []
+    if not loops:
+        return []
+
+    # Determine which loops to target based on current selection
+    selected_loops = [lp for lp in loops if any(e.select for e in lp)]
+    if selected_loops:
+        target_loops = selected_loops          # repair only selected holes
+    else:
+        target_loops = loops                   # nothing selected → repair all
+
+    # Collect all boundary edges belonging to the target loops
+    target_edge_set = {e for lp in target_loops for e in lp}
 
     for _pass in range(max_passes):
         bm.edges.ensure_lookup_table()
         bm.verts.ensure_lookup_table()
         bm.faces.ensure_lookup_table()
 
-        # Refresh boundary — it changes as we add faces
-        current_boundary = find_boundary_edges(bm)
+        # Refresh boundary edges and keep only those in target holes
+        current_boundary = [e for e in find_boundary_edges(bm)
+                            if e in target_edge_set]
         if not current_boundary:
             break
 
@@ -786,10 +800,13 @@ def repair_all_notches(bm, tol_factor=0.5, max_passes=64):
             if face is not None:
                 created_this_pass.append(face)
                 all_created.append(face)
-                # Re-sync after topology change
+                # Add new boundary edges to the target set so they get repaired too
                 bm.edges.ensure_lookup_table()
                 bm.verts.ensure_lookup_table()
                 bm.faces.ensure_lookup_table()
+                for e in face.edges:
+                    if not e.is_manifold:
+                        target_edge_set.add(e)
 
         if not created_this_pass:
             break
