@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "fill_mesh"
-version = "1.0.7"
+version = "1.0.8"
 name = "Fill Mesh"
 tagline = "An add-on to fix and fill holes on your meshes"
 maintainer = "Guillaume Bissieres"
