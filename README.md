@@ -1,4 +1,4 @@
-# blender-fill-mesh
+<img width="1545" height="969" alt="fill_mesh_tuto5" src="https://github.com/user-attachments/assets/8c20e057-b7e2-4883-aaef-2de0fd76d33d" /># blender-fill-mesh
 An add-on to fix and fill hole on your meshes
 
 
@@ -27,9 +27,10 @@ Access **Fill Mesh** in the **N menu** (sidebar) under the **Fill Mesh tab**.
 
 2. **Choose the filling option**:
 
-	• **Smart Fill Select** : smart filling algorithms uses advanced techniques like Grid Fill and Hole Fill, for optimal results.
 
-	• **Simple Bridge Fill** : allows you to work manually by selecting edges. Fills gaps by adding extra edges loop cut.
+	• **Repair Notches** : Fills missing border quads to turn an irregular hole into a clean, grid-fillable boundary. <img width="1545" height="969" alt="fill_mesh_tuto5" src="https://github.com/user-attachments/assets/55dedcd3-abaf-41f4-9988-968e40ddfe81" />
+
+	• **Grid Fill** : Fills the selected hole boundary with a clean quad grid using Blender's native Grid Fill operator.
 
 	• **Detect Hole** : Automatic Hole Detection no need to manually select edges, finds the gaps for you.
 
